@@ -6,6 +6,7 @@ open Fable.Core
 open Elmish
 
 type [<Pojo>] LazyProps<'model> = {
+    key: string
     model:'model
     render:unit->ReactElement
     equal:'model->'model->bool
@@ -23,6 +24,7 @@ module Components =
 
 [<AutoOpen>]
 module Common =
+    open Fable.Core.JsInterop
     /// Avoid rendering the view unless the model has changed.
     /// equal: function to compare the previous and the new states
     /// view: function to render the model
@@ -31,7 +33,9 @@ module Common =
                      (view:'model->ReactElement)
                      (state:'model) =
         ofType<Components.LazyView<_>,_,_>
-            { render = fun () -> view state
+            {
+              key = unbox<string> state?key
+              render = fun () -> view state
               equal = equal
               model = state }
             []
@@ -46,10 +50,15 @@ module Common =
                       (state:'model)
                       (dispatch:'msg Dispatch) =
         ofType<Components.LazyView<_>,_,_>
-            { render = fun () -> view dispatch state
+            {
+              key = unbox<string> state?key
+              render = fun () -> view dispatch state
               equal = equal
               model = state }
             []
+
+    [<Emit("$0 || $1")>]
+    let private jsOr a b = jsNative
 
     /// Avoid rendering the view unless the model has changed.
     /// equal: function to compare the previous and the new model (a tuple of two states)
@@ -59,7 +68,9 @@ module Common =
     /// dispatch: dispatch function
     let lazyView3With (equal:_->_->bool) (view:_->_->_->ReactElement) state1 state2 (dispatch:'msg Dispatch) =
         ofType<Components.LazyView<_>,_,_>
-            { render = fun () -> view dispatch state1 state2
+            {
+              key = unbox<string> (jsOr (state1?key) (state2?key))
+              render = fun () -> view dispatch state1 state2
               equal = equal
               model = (state1,state2) }
             []
